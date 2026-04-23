@@ -1,67 +1,69 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
-// Definimos qué forma tiene un Socio para que TypeScript no se queje
-interface Socio {
-  _id: string;
-  nombre: string;
-  dni: string;
-  estadoPago: string;
-}
-
 function App() {
-  const [socios, setSocios] = useState<Socio[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [socios, setSocios] = useState([]);
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  // useEffect se ejecuta apenas se abre la página
-  useEffect(() => {
-    const traerSocios = async () => {
-      try {
-        // Hacemos el pedido al servidor del BACKEND (Puerto 3000)
-        const respuesta = await axios.get('http://localhost:3000/api/socios/todos');
-        setSocios(respuesta.data);
-        setCargando(false);
-      } catch (error) {
-        console.error("Error al traer socios:", error);
-        setCargando(false);
-      }
-    };
-
-    traerSocios();
-  }, []); // El array vacío [] significa: "hacelo solo una vez al cargar"
-
-  return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>GymApp - Panel de Control</h1>
-      <p>Estado del sistema: <b>{cargando ? 'Cargando...' : 'Conectado'}</b></p>
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // 1. Pedimos el token al backend
+      const res = await axios.post('http://localhost:3000/api/auth/login', { email, password });
+      const elToken = res.data.token;
       
-      <div style={{ marginTop: '20px' }}>
-        <h2>Lista de Socios</h2>
-        {socios.length === 0 && !cargando ? (
-          <p>No hay socios cargados en la base de datos.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {socios.map(socio => (
-              <li key={socio._id} style={{ 
-                padding: '10px', 
-                borderBottom: '1px solid #eee',
-                display: 'flex',
-                justifyContent: 'space-between'
-              }}>
-                <span>{socio.nombre} (DNI: {socio.dni})</span>
-                <span style={{ 
-                  color: socio.estadoPago === 'pagado' ? 'green' : 'red',
-                  fontWeight: 'bold'
-                }}>
-                  {socio.estadoPago.toUpperCase()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      // 2. Lo guardamos en el estado y en la memoria del navegador
+      setToken(elToken);
+      localStorage.setItem('token', elToken);
+      alert("Login exitoso!");
+    } catch (err) {
+      alert("Error en el login. Revisá tus credenciales.");
+    }
+  }
+
+  useEffect(() => {
+    if (token) {
+      const traerSocios = async () => {
+        try {
+          // 3. Enviamos el token en los encabezados (Headers)
+          const res = await axios.get('http://localhost:3000/api/socios/todos', {
+            headers: { 'auth-token': token }
+          });
+          setSocios(res.data);
+        } catch (err) {
+          console.error("Error al traer socios", err);
+        }
+      };
+      traerSocios();
+    }
+  }, [token]); // Se ejecuta cada vez que el token cambia
+
+  // Si no hay token, mostramos el Login
+  if (!token) {
+    return (
+      <div style={{ padding: '50px' }}>
+        <h2>Login - GymApp</h2>
+        <form onSubmit={handleLogin}>
+          <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+          <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+          <button type="submit">Entrar</button>
+        </form>
       </div>
+    );
+  }
+
+  // Si hay token, mostramos la lista (tu código anterior)
+  return (
+    <div style={{ padding: '20px' }}>
+      <h1>Panel del Gimnasio</h1>
+      <button onClick={() => { localStorage.removeItem('token'); setToken(''); }}>Cerrar Sesión</button>
+      <ul>
+        {socios.map((s: any) => <li key={s._id}>{s.nombre} - {s.estadoPago}</li>)}
+      </ul>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
