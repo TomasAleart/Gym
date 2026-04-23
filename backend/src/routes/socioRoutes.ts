@@ -21,7 +21,7 @@ router.post('/registrar', async (req, res) => {
 });
 
 // RUTA PARA VER TODOS LOS SOCIOS (Método GET)
-router.get('/todos', async (req, res) => {
+router.get('/todos', verificarToken, async (req, res) => {
     try {
         // .find() es la función de Mongoose para "buscar". 
         // Si lo dejás vacío (), trae TODO lo que hay en la colección.

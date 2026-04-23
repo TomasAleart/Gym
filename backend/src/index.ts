@@ -5,7 +5,7 @@ import cuotaRoutes from './routes/cuotaRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Permite que el servidor entienda datos JSON que vengan del Frontend
 app.use(express.json());
@@ -24,6 +24,4 @@ app.get('/', (req, res) => {
     res.send('🏋️ API del Gimnasio lista');
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Servidor en http://localhost:${PORT}`));

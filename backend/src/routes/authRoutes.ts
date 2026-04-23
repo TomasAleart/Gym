@@ -46,10 +46,11 @@ router.post('/login', async (req, res) => {
 
         // 3. Si todo está ok, generar el Token (nuestra "pulsera VIP")
         // Usamos una clave secreta para firmar el token (en producción esto va en un .env)
+        // En authRoutes.ts, dentro del login:
         const token = jwt.sign(
             { id: usuarioEncontrado._id, nombre: usuarioEncontrado.nombre },
-            'MI_CLAVE_SECRETA_SUPER_SEGURA',
-            { expiresIn: '2h' } // El pase vence en 2 horas
+            process.env.JWT_SECRET as string, // <-- Cambiar aquí también
+            { expiresIn: '2h' }
         );
 
         res.status(200).json({ mensaje: "Login exitoso", token });
