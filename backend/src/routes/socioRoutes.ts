@@ -52,7 +52,7 @@ router.put('/editar/:id', async (req, res) => {
 });
 
 // RUTA PARA ELIMINAR UN SOCIO (Método DELETE)
-router.delete('/eliminar/:id', verificarToken, async (req, res) => {
+router.delete('/eliminar/:id',verificarToken, async (req, res) => {
     try {
         const idSocio = req.params.id;
 
