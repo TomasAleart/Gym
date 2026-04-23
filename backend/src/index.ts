@@ -1,5 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import cors from 'cors';
 import socioRoutes from './routes/socioRoutes.js';
 import cuotaRoutes from './routes/cuotaRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -9,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 // Permite que el servidor entienda datos JSON que vengan del Frontend
 app.use(express.json());
+app.use(cors());
 
 app.use('/api/socios', socioRoutes);
 app.use('/api/cuotas', cuotaRoutes); 
