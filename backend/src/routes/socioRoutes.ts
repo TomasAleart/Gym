@@ -5,7 +5,7 @@ import { verificarToken } from '../middleware/auth.js';
 const router = Router(); // El 'Router' es como un mini-jefe que maneja solo las rutas de socios
 
 // RUTA PARA CREAR UN SOCIO (Método POST)
-router.post('/registrar', async (req, res) => {
+router.post('/registrar',verificarToken ,async (req, res) => {
     try {
         // req.body es donde llega la información que enviamos desde afuera
         const nuevoSocio = new Socio(req.body); 
