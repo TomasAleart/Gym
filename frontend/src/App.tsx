@@ -43,25 +43,82 @@ function App() {
   // Si no hay token, mostramos el Login
   if (!token) {
     return (
-      <div style={{ padding: '50px' }}>
-        <h2>Login - GymApp</h2>
-        <form onSubmit={handleLogin}>
-          <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-          <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-          <button type="submit">Entrar</button>
-        </form>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">GymApp Login</h2>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input 
+                type="email" 
+                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => setEmail(e.target.value)} 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Contraseña</label>
+              <input 
+                type="password" 
+                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => setPassword(e.target.value)} 
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Entrar al Panel
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
 
   // Si hay token, mostramos la lista (tu código anterior)
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Panel del Gimnasio</h1>
-      <button onClick={() => { localStorage.removeItem('token'); setToken(''); }}>Cerrar Sesión</button>
-      <ul>
-        {socios.map((s: any) => <li key={s._id}>{s.nombre} - {s.estadoPago}</li>)}
-      </ul>
+    <div className="min-h-screen bg-gray-50">
+      {/* Barra de Navegación */}
+      <nav className="bg-white shadow-sm p-4 flex justify-between items-center px-8">
+        <h1 className="text-xl font-bold text-blue-600">GymApp <span className="text-gray-400 text-sm font-normal">| Panel de Socios</span></h1>
+        <button 
+          onClick={() => { localStorage.removeItem('token'); setToken(''); }}
+          className="text-sm bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition"
+        >
+          Cerrar Sesión
+        </button>
+      </nav>
+
+      <main className="p-8 max-w-5xl mx-auto">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-bottom border-gray-100">
+              <tr>
+                <th className="p-4 font-semibold text-gray-600">Socio</th>
+                <th className="p-4 font-semibold text-gray-600">DNI</th>
+                <th className="p-4 font-semibold text-gray-600">Estado de Pago</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {socios.map((socio: any) => (
+                <tr key={socio._id} className="hover:bg-gray-50 transition">
+                  <td className="p-4 text-gray-800 font-medium">{socio.nombre}</td>
+                  <td className="p-4 text-gray-500">{socio.dni}</td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      socio.estadoPago === 'pagado' 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                    }`}>
+                      {socio.estadoPago.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   );
 }
