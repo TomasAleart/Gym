@@ -6,7 +6,8 @@ const socioSchema = new Schema({
     apellido: { type: String, required: true },
     dni: { type: Number, required: true, unique: true },
     fechaIngreso: { type: Date, default: Date.now },
-    estaActivo: { type: Boolean, default: true }
+    estaActivo: { type: Boolean, default: true },
+    fechaUltimoPago: { type: Date, default: Date.now } 
 });
 
 // Creamos el modelo basado en ese molde

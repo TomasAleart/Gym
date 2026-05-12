@@ -13,7 +13,12 @@ function App() {
   const [editando, setEditando] = useState(false);
   const [socioIdAEditar, setSocioIdAEditar] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [nuevaFechaPago, setNuevaFechaPago] = useState(new Date().toISOString().split('T')[0]);
 
+  const formatearFecha = (fecha: string) => {
+  if (!fecha) return "Sin datos";
+  return new Date(fecha).toLocaleDateString('es-AR');
+  };
   // --- LÓGICA DE LOGIN ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +40,8 @@ function App() {
       nombre: nuevoNombre,
       apellido: nuevoApellido,
       dni: Number(nuevoDni),
-      estaActivo: nuevoEstado === "true"
+      estaActivo: nuevoEstado === "true",
+      fechaUltimoPago: nuevaFechaPago
     };
 
     try {
@@ -96,6 +102,7 @@ function App() {
     setNuevoApellido(socio.apellido);
     setNuevoDni(socio.dni.toString());
     setNuevoEstado(socio.estaActivo ? "true" : "false");
+    setNuevaFechaPago(new Date(socio.fechaUltimoPago).toISOString().split('T')[0]);
     
     // Opcional: Hacer scroll hacia arriba para que el usuario vea el formulario
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -108,7 +115,8 @@ function App() {
     setNuevoApellido('');
     setNuevoDni('');
     setNuevoEstado('pagado');
-  };
+    setNuevaFechaPago(new Date().toISOString().split('T')[0]);
+   };
 
   const sociosFiltrados = socios.filter((socio: any) => 
   socio.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -193,6 +201,15 @@ function App() {
                 <option value="true">Activo</option>
                 <option value="false">Inactivo</option>
               </select>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-600 mb-1">Fecha de Último Pago</label>
+              <input 
+                type="date" 
+                value={nuevaFechaPago}
+                onChange={(e) => setNuevaFechaPago(e.target.value)}
+                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
             </div>
             <div className="flex gap-2">
               <button 
@@ -289,25 +306,53 @@ function App() {
                 <th className="p-4 font-semibold text-gray-600 ">Socio</th>
                 <th className="p-4 font-semibold text-gray-600 ">DNI</th>
                 <th className="p-4 font-semibold text-gray-600 ">Estado</th>
+                <th className="p-4 font-semibold text-gray-600 text-left">Último Pago</th>
                 <th className="p-4 font-semibold text-gray-600 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {sociosFiltrados.map((socio: any) => (
-                <tr key={socio._id} className="hover:bg-gray-50 transition">
-                  <td className="p-4 text-gray-800 font-medium">{socio.nombre} {socio.apellido}</td>
-                  <td className="p-4 text-gray-500">{socio.dni}</td>
-                  <td className="p-4">
-                    
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      socio.estaActivo 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-red-100 text-red-700'
-                    }`}>
-                      {socio.estaActivo ? 'ACTIVO' : 'INACTIVO'}
-                    </span>
-                  </td>
-                    <td className="p-4 text-center"> {/* Agregamos text-center aquí también por seguridad */}
+              <tbody className="divide-y divide-gray-100">
+                {sociosFiltrados.map((socio: any) => (
+                  <tr key={socio._id} className="hover:bg-gray-50 transition">
+                    {/* 1. Nombre y Apellido */}
+                    <td className="p-4 text-gray-800 font-medium">
+                      {socio.nombre} {socio.apellido}
+                    </td>
+
+                    {/* 2. DNI */}
+                    <td className="p-4 text-gray-500">
+                      {socio.dni}
+                    </td>
+
+                    {/* 3. Estado (Badge) */}
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        socio.estaActivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {socio.estaActivo ? 'ACTIVO' : 'INACTIVO'}
+                      </span>
+                    </td>
+
+                    {/* 4. ÚLTIMO PAGO (Con lógica de colores) */}
+                    <td className="p-4 text-sm">
+                      {(() => {
+                        const hoy = new Date();
+                        const fechaPago = new Date(socio.fechaUltimoPago);
+                        const diferenciaDias = Math.floor((hoy.getTime() - fechaPago.getTime()) / (1000 * 60 * 60 * 24));
+                        
+                        let colorClase = "text-gray-600"; 
+                        if (diferenciaDias > 30) colorClase = "text-orange-500 font-bold"; 
+                        if (diferenciaDias > 35) colorClase = "text-red-600 font-bold";   
+
+                        return (
+                          <span className={colorClase}>
+                            {formatearFecha(socio.fechaUltimoPago)}
+                          </span>
+                        );
+                      })()}
+                    </td>
+
+                    {/* 5. Acciones */}
+                    <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-3">
                         <button 
                           onClick={() => prepararEdicion(socio)}
@@ -317,7 +362,6 @@ function App() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
-
                         <button 
                           onClick={() => borrarSocio(socio._id)}
                           className="text-red-500 hover:text-red-700 transition-colors p-1"
@@ -328,9 +372,9 @@ function App() {
                         </button>
                       </div>
                     </td>
-                </tr>
-              ))}
-            </tbody>
+                  </tr>
+                ))}
+              </tbody>
           </table>
         </div>
       </main>
