@@ -14,24 +14,38 @@ function App() {
   const [socioIdAEditar, setSocioIdAEditar] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [nuevaFechaPago, setNuevaFechaPago] = useState(new Date().toISOString().split('T')[0]);
+  const [verHistorial, setVerHistorial] = useState(false);
+  const [historialSocio, setHistorialSocio] = useState([]);
+  const [socioSeleccionado, setSocioSeleccionado] = useState<any>(null);
 
   const formatearFecha = (fecha: string) => {
-  if (!fecha) return "Sin datos";
-  return new Date(fecha).toLocaleDateString('es-AR');
-  };
-  // --- LÓGICA DE LOGIN ---
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post('http://localhost:3000/api/auth/login', { email, password });
-      const elToken = res.data.token;
-      setToken(elToken);
-      localStorage.setItem('token', elToken);
-      alert("Login exitoso!");
-    } catch (err) {
-      alert("Error en el login. Revisá tus credenciales.");
+    if (!fecha) return "Sin datos";
+    return new Date(fecha).toLocaleDateString('es-AR');
+    };
+    // --- LÓGICA DE LOGIN ---
+    const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        const res = await axios.post('http://localhost:3000/api/auth/login', { email, password });
+        const elToken = res.data.token;
+        setToken(elToken);
+        localStorage.setItem('token', elToken);
+        alert("Login exitoso!");
+      } catch (err) {
+        alert("Error en el login. Revisá tus credenciales.");
+      }
     }
-  }
+
+  const abrirHistorial = async (socio: any) => {
+    setSocioSeleccionado(socio);
+    try {
+      const res = await axios.get(`http://localhost:3000/api/pagos/historial/${socio._id}`);
+      setHistorialSocio(res.data);
+      setVerHistorial(true);
+    } catch (error) {
+      alert("Error al cargar el historial");
+    }
+  };
 
   // --- LÓGICA DE ALTA DE SOCIO ---
   const guardarSocio = async (e: React.FormEvent) => {
@@ -363,6 +377,15 @@ function App() {
                           </svg>
                         </button>
                         <button 
+                          onClick={() => abrirHistorial(socio)}
+                          className="text-purple-500 hover:text-purple-700 p-1"
+                          title="Ver Historial de Pagos"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </button>
+                        <button 
                           onClick={() => borrarSocio(socio._id)}
                           className="text-red-500 hover:text-red-700 transition-colors p-1"
                         >
@@ -378,6 +401,65 @@ function App() {
           </table>
         </div>
       </main>
+{/* MODAL DEL HISTORIAL DE PAGOS */}
+      {verHistorial && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[80vh] flex flex-col">
+            
+            {/* Cabecera del Modal */}
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-xl font-bold text-gray-800">
+                Historial de {socioSeleccionado?.nombre} {socioSeleccionado?.apellido}
+              </h3>
+              <button 
+                onClick={() => setVerHistorial(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-xl p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenido / Tabla interna */}
+            <div className="overflow-y-auto flex-1">
+              {historialSocio.length === 0 ? (
+                <p className="text-center text-gray-500 my-8">Este socio no registra pagos en el sistema.</p>
+              ) : (
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b text-gray-500 text-sm font-semibold">
+                      <th className="pb-2">Mes</th>
+                      <th className="pb-2">Fecha</th>
+                      <th className="pb-2 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {historialSocio.map((pago: any) => (
+                      <tr key={pago._id} className="text-sm text-gray-700">
+                        <td className="py-3 font-medium">{pago.mesReferencia || "Mensualidad"}</td>
+                        <td className="py-3">{formatearFecha(pago.fecha)}</td>
+                        <td className="py-3 text-right text-green-600 font-semibold">
+                          ${pago.monto.toLocaleString('es-AR')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Botón de Cierre */}
+            <div className="border-t pt-3 mt-4 text-right">
+              <button 
+                onClick={() => setVerHistorial(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition"
+              >
+                Cerrar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const pagoSchema = new mongoose.Schema({
   socioId: { 
@@ -11,4 +11,5 @@ const pagoSchema = new mongoose.Schema({
   mesReferencia: { type: String } // Ejemplo: "Mayo 2026"
 });
 
-module.exports = mongoose.model('Pago', pagoSchema);
+const Pago = mongoose.model('Pago', pagoSchema);
+export default Pago;

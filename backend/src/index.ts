@@ -4,6 +4,7 @@ import cors from 'cors';
 import socioRoutes from './routes/socioRoutes.js';
 import cuotaRoutes from './routes/cuotaRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import pagoRoutes from './routes/pagoRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
+app.use('/api/pagos', pagoRoutes);
 app.use('/api/socios', socioRoutes);
 app.use('/api/cuotas', cuotaRoutes); 
 app.use('/api/auth', authRoutes);

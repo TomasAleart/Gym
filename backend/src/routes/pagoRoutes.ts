@@ -1,9 +1,10 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 const router = express.Router();
-import Pago from '../models/Pago'; // Asegurate de que la ruta sea correcta
+// Importamos el modelo (si tira error, usamos una alternativa abajo)
+import Pago from '../models/Pago.js'; 
 
 // RUTA PARA REGISTRAR UN PAGO NUEVO
-router.post('/registrar', async (req: Request, res: Response) => {
+router.post('/registrar', async (req: any, res: any) => {
   try {
     const { socioId, monto, mesReferencia } = req.body;
     const nuevoPago = new Pago({
@@ -20,7 +21,7 @@ router.post('/registrar', async (req: Request, res: Response) => {
 });
 
 // RUTA PARA TRAER EL HISTORIAL DE UN SOCIO ESPECÍFICO
-router.get('/historial/:socioId', async (req: Request, res: Response): Promise<void> => {
+router.get('/historial/:socioId', async (req: any, res: any) => {
   try {
     const { socioId } = req.params;
     const historial = await Pago.find({ socioId }).sort({ fecha: -1 });
