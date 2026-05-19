@@ -25,25 +25,23 @@ function App() {
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const hoy = new Date();
 
-    // Si no hay fecha previa ("Sin aportes"), el próximo mes a pagar es el mes actual real
-    if (!fechaISO) {
+    // Si no hay fecha, si es un string vacío, o si es un texto inválido: mes corriente directo
+    if (!fechaISO || fechaISO.trim() === "" || isNaN(Date.parse(fechaISO))) {
       const nombreMes = meses[hoy.getMonth()];
       const anio = hoy.getFullYear();
-      // Devolvemos el string para el input y la fecha correspondiente (el primero de este mes)
       return {
         textoInput: `${nombreMes} ${anio}`,
         nuevaFechaSocio: `${anio}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`
       };
     }
 
-    // Si ya tiene una fecha, leemos su mes y año locales
+    // Si el socio ya tiene un pago válido, calcula el mes siguiente de manera correlativa
     const fecha = new Date(fechaISO);
     fecha.setMinutes(fecha.getMinutes() + fecha.getTimezoneOffset());
 
     let mesIdx = fecha.getMonth();
     let anio = fecha.getFullYear();
 
-    // Avanzamos al siguiente mes
     mesIdx++;
     if (mesIdx > 11) {
       mesIdx = 0;
@@ -65,30 +63,30 @@ function App() {
       const datosPago = {
         socioId: socioSeleccionado._id,
         monto: Number(pagoMonto),
-        mesReferencia: pagoMes // Ej: "Mayo 2026" (Para el historial de pagos)
+        mesReferencia: pagoMes
       };
 
-      // 1. Guardamos el recibo en el historial de pagos
-      await axios.post('http://localhost:3000/api/pagos/registrar', datosPago);
+      // 1. LE AGREGAMOS EL TOKEN AL REGISTRAR EL PAGO
+      await axios.post('http://localhost:3000/api/pagos/registrar', datosPago, {
+        headers: { 'auth-token': token }
+      });
       
-      // 2. Actualizamos el socio usando el campo nativo de su base de datos
       const datosSocioActualizado = {
         ...socioSeleccionado,
-        fechaUltimoPago: nuevaFechaPago // Clavamos el "2026-05-01" correspondiente
+        fechaUltimoPago: nuevaFechaPago
       };
 
+      // 2. ESTE YA TENÍA EL TOKEN, QUEDA PERFECTO
       await axios.put(`http://localhost:3000/api/socios/editar/${socioSeleccionado._id}`, datosSocioActualizado, {
         headers: { 'auth-token': token }
       });
       
       alert(`Pago de ${pagoMes} registrado con éxito`);
       
-      // 3. Limpiamos estados y cerramos
       setVerRegistrarPago(false);
       setPagoMonto('');
       setPagoMes('');
       
-      // 4. Refrescamos la tabla principal
       traerSocios();
     } catch (error) {
       alert("Error al registrar el pago en el sistema");
@@ -120,14 +118,16 @@ function App() {
   const abrirHistorial = async (socio: any) => {
     setSocioSeleccionado(socio);
     try {
-      const res = await axios.get(`http://localhost:3000/api/pagos/historial/${socio._id}`);
+      // Agregamos los headers con el token, igual que hacés al traer los socios
+      const res = await axios.get(`http://localhost:3000/api/pagos/historial/${socio._id}`, {
+        headers: { 'auth-token': token }
+      });
       setHistorialSocio(res.data);
       setVerHistorial(true);
     } catch (error) {
       alert("Error al cargar el historial");
     }
   };
-
   // --- LÓGICA DE ALTA DE SOCIO ---
   const guardarSocio = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,9 +214,9 @@ function App() {
    };
 
   const sociosFiltrados = socios.filter((socio: any) => 
-  socio.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-  socio.apellido.toLowerCase().includes(busqueda.toLowerCase()) ||
-  socio.dni.toString().includes(busqueda)
+    socio.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    socio.apellido?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    socio.dni?.toString().includes(busqueda)
   );
 
   useEffect(() => {
