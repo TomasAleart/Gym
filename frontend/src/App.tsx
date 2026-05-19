@@ -8,7 +8,7 @@ function App() {
   const [password, setPassword] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoDni, setNuevoDni] = useState('');
-  const [nuevoEstado, setNuevoEstado] = useState('pagado');
+  const [nuevoEstado, setNuevoEstado] = useState('true');
   const [nuevoApellido, setNuevoApellido] = useState(''); // Nuevo estado
   const [editando, setEditando] = useState(false);
   const [socioIdAEditar, setSocioIdAEditar] = useState<string | null>(null);
@@ -17,13 +17,94 @@ function App() {
   const [verHistorial, setVerHistorial] = useState(false);
   const [historialSocio, setHistorialSocio] = useState([]);
   const [socioSeleccionado, setSocioSeleccionado] = useState<any>(null);
+  const [verRegistrarPago, setVerRegistrarPago] = useState(false);
+  const [pagoMonto, setPagoMonto] = useState('');
+  const [pagoMes, setPagoMes] = useState('');
+
+  const obtenerProximoMes = (fechaISO: string | null | undefined) => {
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const hoy = new Date();
+
+    // Si no hay fecha previa ("Sin aportes"), el próximo mes a pagar es el mes actual real
+    if (!fechaISO) {
+      const nombreMes = meses[hoy.getMonth()];
+      const anio = hoy.getFullYear();
+      // Devolvemos el string para el input y la fecha correspondiente (el primero de este mes)
+      return {
+        textoInput: `${nombreMes} ${anio}`,
+        nuevaFechaSocio: `${anio}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`
+      };
+    }
+
+    // Si ya tiene una fecha, leemos su mes y año locales
+    const fecha = new Date(fechaISO);
+    fecha.setMinutes(fecha.getMinutes() + fecha.getTimezoneOffset());
+
+    let mesIdx = fecha.getMonth();
+    let anio = fecha.getFullYear();
+
+    // Avanzamos al siguiente mes
+    mesIdx++;
+    if (mesIdx > 11) {
+      mesIdx = 0;
+      anio++;
+    }
+
+    const proximoMesNombre = meses[mesIdx];
+    return {
+      textoInput: `${proximoMesNombre} ${anio}`,
+      nuevaFechaSocio: `${anio}-${String(mesIdx + 1).padStart(2, '0')}-01`
+    };
+  };
+
+  const manejarRegistrarPago = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!socioSeleccionado) return;
+
+    try {
+      const datosPago = {
+        socioId: socioSeleccionado._id,
+        monto: Number(pagoMonto),
+        mesReferencia: pagoMes // Ej: "Mayo 2026" (Para el historial de pagos)
+      };
+
+      // 1. Guardamos el recibo en el historial de pagos
+      await axios.post('http://localhost:3000/api/pagos/registrar', datosPago);
+      
+      // 2. Actualizamos el socio usando el campo nativo de su base de datos
+      const datosSocioActualizado = {
+        ...socioSeleccionado,
+        fechaUltimoPago: nuevaFechaPago // Clavamos el "2026-05-01" correspondiente
+      };
+
+      await axios.put(`http://localhost:3000/api/socios/editar/${socioSeleccionado._id}`, datosSocioActualizado, {
+        headers: { 'auth-token': token }
+      });
+      
+      alert(`Pago de ${pagoMes} registrado con éxito`);
+      
+      // 3. Limpiamos estados y cerramos
+      setVerRegistrarPago(false);
+      setPagoMonto('');
+      setPagoMes('');
+      
+      // 4. Refrescamos la tabla principal
+      traerSocios();
+    } catch (error) {
+      alert("Error al registrar el pago en el sistema");
+    }
+  };
 
   const formatearFecha = (fecha: string) => {
     if (!fecha) return "Sin datos";
-    return new Date(fecha).toLocaleDateString('es-AR');
-    };
+    // Creamos el objeto fecha, pero usamos los métodos que obtienen el día/mes/año local del string sin desfasaje
+    const dateObj = new Date(fecha);
+    // Sumamos el desfasaje horario local para que no "vuelva" al día anterior
+    dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
+    return dateObj.toLocaleDateString('es-AR');
+  };
     // --- LÓGICA DE LOGIN ---
-    const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       try {
         const res = await axios.post('http://localhost:3000/api/auth/login', { email, password });
@@ -55,7 +136,7 @@ function App() {
       apellido: nuevoApellido,
       dni: Number(nuevoDni),
       estaActivo: nuevoEstado === "true",
-      fechaUltimoPago: nuevaFechaPago
+      fechaUltimoPago: editando? nuevaFechaPago : ""
     };
 
     try {
@@ -128,7 +209,7 @@ function App() {
     setNuevoNombre('');
     setNuevoApellido('');
     setNuevoDni('');
-    setNuevoEstado('pagado');
+    setNuevoEstado('true');
     setNuevaFechaPago(new Date().toISOString().split('T')[0]);
    };
 
@@ -215,15 +296,6 @@ function App() {
                 <option value="true">Activo</option>
                 <option value="false">Inactivo</option>
               </select>
-            </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-semibold text-gray-600 mb-1">Fecha de Último Pago</label>
-              <input 
-                type="date" 
-                value={nuevaFechaPago}
-                onChange={(e) => setNuevaFechaPago(e.target.value)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              />
             </div>
             <div className="flex gap-2">
               <button 
@@ -349,21 +421,36 @@ function App() {
                     {/* 4. ÚLTIMO PAGO (Con lógica de colores) */}
                     <td className="p-4 text-sm">
                       {(() => {
-                        const hoy = new Date();
-                        const fechaPago = new Date(socio.fechaUltimoPago);
-                        const diferenciaDias = Math.floor((hoy.getTime() - fechaPago.getTime()) / (1000 * 60 * 60 * 24));
+                        if (!socio.fechaUltimoPago) return <span className="text-red-500 font-bold">Sin aportes</span>;
+
+                        const fecha = new Date(socio.fechaUltimoPago);
+                        fecha.setMinutes(fecha.getMinutes() + fecha.getTimezoneOffset());
                         
-                        let colorClase = "text-gray-600"; 
-                        if (diferenciaDias > 30) colorClase = "text-orange-500 font-bold"; 
-                        if (diferenciaDias > 35) colorClase = "text-red-600 font-bold";   
+                        const opciones: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric' };
+                        const mesCubiertoStr = fecha.toLocaleDateString('es-AR', opciones);
+                        const mesCubiertoFormateado = mesCubiertoStr.charAt(0).toUpperCase() + mesCubiertoStr.slice(1);
+
+                        const hoy = new Date();
+                        const anioActual = hoy.getFullYear();
+                        const mesActual = hoy.getMonth();
+
+                        const anioPago = fecha.getFullYear();
+                        const mesPago = fecha.getMonth();
+
+                        let colorClase = "text-green-600 font-semibold";
+
+                        // Si el período pago es menor al mes/año actual, está vencido
+                        if (anioPago < anioActual || (anioPago === anioActual && mesPago < mesActual)) {
+                          colorClase = "text-red-600 font-bold";
+                        }
 
                         return (
                           <span className={colorClase}>
-                            {formatearFecha(socio.fechaUltimoPago)}
+                            {mesCubiertoFormateado}
                           </span>
                         );
                       })()}
-                    </td>
+                    </td>              
 
                     {/* 5. Acciones */}
                     <td className="p-4 text-center">
@@ -374,6 +461,23 @@ function App() {
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button 
+                          onClick={() => { 
+                              setSocioSeleccionado(socio); 
+                              // Calculamos el próximo mes en base a la fecha real que viene de Mongo
+                              const resultado = obtenerProximoMes(socio.fechaUltimoPago);
+                              
+                              setPagoMes(resultado.textoInput);       // Para mostrar en el input bloqueado (ej: "Mayo 2026")
+                              setNuevaFechaPago(resultado.nuevaFechaSocio); // Guardamos la fecha equivalente (ej: "2026-05-01")
+                              setVerRegistrarPago(true); 
+                            }}
+                            className="text-green-500 hover:text-green-700 transition-colors p-1"
+                            title="Registrar Nuevo Pago"
+                          >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </button>
                         <button 
@@ -401,6 +505,60 @@ function App() {
           </table>
         </div>
       </main>
+      {/* MODAL PARA REGISTRAR PAGO NUEVO */}
+     {verRegistrarPago && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-xl font-bold text-gray-800">
+                Registrar Pago para {socioSeleccionado?.nombre}
+              </h3>
+              <button onClick={() => setVerRegistrarPago(false)} className="text-gray-400 hover:text-gray-600 font-bold text-xl">✕</button>
+            </div>
+
+            <form onSubmit={manejarRegistrarPago} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Mes de Referencia</label>
+                <input 
+                  type="text" 
+                  value={pagoMes} 
+                  disabled // <-- ¡ESTO BLOQUEA EL INPUT! Evita errores humanos y saltos de meses
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-500 rounded-lg p-2 outline-none cursor-not-allowed"
+                  required 
+                />
+                <p className="text-xs text-gray-400 mt-1">El sistema calcula correlativamente la cuota que corresponde abonar.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Monto ($)</label>
+                <input 
+                  type="number" 
+                  placeholder="Ej: 12000" 
+                  value={pagoMonto} 
+                  onChange={(e) => setPagoMonto(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-green-500"
+                  required 
+                />
+              </div>
+
+              <div className="border-t pt-3 mt-4 flex justify-end gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => setVerRegistrarPago(false)} 
+                  className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition shadow-md"
+                >
+                  Confirmar Cobro
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 {/* MODAL DEL HISTORIAL DE PAGOS */}
       {verHistorial && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
