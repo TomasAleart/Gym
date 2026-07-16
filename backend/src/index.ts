@@ -19,7 +19,7 @@ app.use('/api/cuotas', cuotaRoutes);
 app.use('/api/auth', authRoutes);
 
 // Conexión limpia a MongoDB
-mongoose.connect('mongodb://127.0.0.1:27017/gymDB')
+mongoose.connect(process.env.MONGO_URI!)
     .then(() => console.log('✅ Conectado a MongoDB con éxito'))
     .catch((error) => console.error('❌ Error de conexión:', error));
 

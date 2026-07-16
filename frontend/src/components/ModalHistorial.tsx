@@ -1,13 +1,35 @@
+import { useEffect, useState } from 'react';
 import { formatearFecha } from '../utils/fechas';
+import { pagoService } from '../services/api';
 
 interface ModalHistorialProps {
   isOpen: boolean;
   onClose: () => void;
   socio: any;
-  historial: any[];
+  token: string;
 }
 
-export function ModalHistorial({ isOpen, onClose, socio, historial }: ModalHistorialProps) {
+export function ModalHistorial({ isOpen, onClose, socio, token }: ModalHistorialProps) {
+  const [historial, setHistorial] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    const cargarHistorial = async () => {
+      if (!isOpen || !socio?._id) return;
+      setCargando(true);
+      try {
+        const data = await pagoService.getHistorial(socio._id, token);
+        setHistorial(data);
+      } catch (error) {
+        alert("Error al cargar el historial de pagos");
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarHistorial();
+  }, [isOpen, socio?._id, token]);
+
   if (!isOpen || !socio) return null;
 
   return (
@@ -26,7 +48,9 @@ export function ModalHistorial({ isOpen, onClose, socio, historial }: ModalHisto
         </div>
 
         <div className="overflow-y-auto flex-1 pr-1 my-2">
-          {historial.length === 0 ? (
+          {cargando ? (
+            <p className="text-center py-8 text-gray-400 animate-pulse">Cargando pagos registrados...</p>
+          ) : historial.length === 0 ? (
             <p className="text-center py-8 text-gray-400 italic">Este socio no registra pagos en el sistema.</p>
           ) : (
             <div className="border border-gray-100 rounded-xl overflow-hidden">

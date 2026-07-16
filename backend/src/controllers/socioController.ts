@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
 import { Socio } from '../models/Socio.js';
+import Pago from '../models/Pago.js';
+import { Types } from 'mongoose';
 
 // 1. OBTENER TODOS LOS SOCIOS (GET)
 export const obtenerTodosLosSocios = async (req: Request, res: Response) => {
@@ -39,13 +41,31 @@ export const editarSocio = async (req: Request, res: Response) => {
 export const eliminarSocio = async (req: Request, res: Response) => {
     try {
         const idSocio = req.params.id;
+
+        // 1. Validamos que idSocio sea estrictamente una cadena de texto (y no un array o undefined)
+        if (typeof idSocio !== 'string') {
+            return res.status(400).json({ mensaje: "ID de socio inválido o ausente" });
+        }
+
+        // 2. Ahora que TypeScript sabe que idSocio es un 'string', validamos su formato de ObjectId
+        if (!Types.ObjectId.isValid(idSocio)) {
+            return res.status(400).json({ mensaje: "ID de socio con formato inválido" });
+        }
+        
+        // Eliminamos al socio de su respectiva colección
         const socioEliminado = await Socio.findByIdAndDelete(idSocio);
 
         if (!socioEliminado) {
             return res.status(404).json({ mensaje: "Socio no encontrado" });
         }
 
-        res.status(200).json({ mensaje: "Socio eliminado correctamente", socio: socioEliminado });
+        // 3. Convertimos con seguridad absoluta a ObjectId
+        await Pago.deleteMany({ socioId: new Types.ObjectId(idSocio) });
+
+        res.status(200).json({ 
+            mensaje: "Socio y su historial de pagos eliminados correctamente", 
+            socio: socioEliminado 
+        });
     } catch (error) {
         res.status(400).json({ mensaje: "Error al eliminar", detalle: error });
     }

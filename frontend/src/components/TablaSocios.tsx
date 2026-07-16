@@ -6,7 +6,7 @@ interface TablaSociosProps {
   onEditar: (socio: any) => void;
   onBorrar: (id: string) => Promise<void>;
   onPagar: (socio: any) => void;
-  onVerHistorial: (socio: any) => Promise<void>;
+  onVerHistorial: (socio: any) => void;
 }
 
 export function TablaSocios({ socios, onEditar, onBorrar, onPagar, onVerHistorial }: TablaSociosProps) {

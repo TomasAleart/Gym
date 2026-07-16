@@ -11,6 +11,11 @@ export const authService = {
   login: async (credentials: any) => {
     const res = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
     return res.data;
+  },
+  registrar: async (datosUsuario: any) => {
+    // Enviamos email, password y opcionalmente nombre al backend
+    const respuesta = await axios.post(`${API_BASE_URL}/auth/register`, datosUsuario);
+    return respuesta.data;
   }
 };
 

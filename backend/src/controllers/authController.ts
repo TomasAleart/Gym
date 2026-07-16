@@ -55,3 +55,43 @@ export const loginUsuario = async (req: Request, res: Response) => {
     res.status(500).json({ mensaje: "Error en el servidor", detalle: error });
   }
 };
+
+export const register = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Validar que vengan los datos
+    if (!email || !password) {
+      res.status(400).json({ message: 'Email y contraseña son requeridos' });
+      return;
+    }
+
+    // 2. Verificar si el usuario ya existe en la base de datos
+    const usuarioExiste = await Usuario.findOne({ email });
+    if (usuarioExiste) {
+      res.status(400).json({ message: 'El correo electrónico ya está registrado' });
+      return;
+    }
+
+    // 3. Crear el nuevo usuario
+    // Nota: Si en tu modelo 'Usuario.ts' ya tenés un middleware .pre('save') con bcrypt, 
+    // Mongoose le va a hacer el hash automáticamente al hacer el .save()
+    const nuevoUsuario = new Usuario({ email, password });
+    await nuevoUsuario.save();
+
+    // 4. Generar el Token JWT para que se loguee automáticamente al registrarse
+    const token = jwt.sign(
+      { id: nuevoUsuario._id },
+      process.env.JWT_SECRET || 'secretapordefecto',
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      message: 'Usuario creado con éxito',
+      token
+    });
+  } catch (error) {
+    console.error('Error en el registro:', error);
+    res.status(500).json({ message: 'Error interno del servidor al registrar usuario' });
+  }
+};
